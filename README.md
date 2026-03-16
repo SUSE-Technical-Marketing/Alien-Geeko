@@ -1,5 +1,9 @@
 # 🦎 GEEKO // ALIEN TERMINAL
 
+<p align="center">
+  <img src="app/geeko-trimmed.png" alt="Geeko" width="300"/>
+</p>
+
 > A Nostromo-style CRT terminal web app that displays live Kubernetes cluster vitals,
 > featuring SUSE's mascot Geeko as an alien entity haunting your edge nodes.
 > Designed for the SUSE Edge KubeCon booth demo — runs on k3s and RKE2,
@@ -445,14 +449,6 @@ Check the pod logs for the specific error:
 kubectl logs -n alien-geeko -l app=alien-geeko
 # Look for: [geeko] /version: ... or [geeko] /api/v1/nodes: ...
 ```
-
-### `EACCES: permission denied, open '/app/server.js'`
-
-The container's user UID doesn't match `runAsUser` in the deployment. The
-Dockerfile creates `geeko` with explicit `--uid 1000` and the deployment sets
-`runAsUser: 1000` — rebuild the image if this error appears after pulling a
-stale image from before the fix.
-
 ### Can't access the app on Rancher Desktop
 
 NodePort addresses the VM's internal network, not `localhost`. Use port-forward:
