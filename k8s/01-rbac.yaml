@@ -1,0 +1,49 @@
+---
+# ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alien-geeko
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+# automountServiceAccountToken is left at its default (true) so the kubelet
+# mounts the projected token at the standard path. Both k3s and RKE2 use
+# projected (bound) tokens — they are rotated ~hourly by the kubelet.
+# server.js re-reads the token from disk on every API call to handle rotation.
+
+---
+# ClusterRole — minimal read-only permissions
+# /version is technically unauthenticated on k3s/RKE2 but we declare it
+# explicitly for forward compatibility and documentation clarity.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alien-geeko-reader
+  labels:
+    app.kubernetes.io/name: alien-geeko
+rules:
+  # Node list + get — for node count, arch, OS image, kubelet version, role labels
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  # /version — K8s server version (also used for k3s/RKE2 distribution detection)
+  - nonResourceURLs: ["/version"]
+    verbs: ["get"]
+
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alien-geeko-reader
+  labels:
+    app.kubernetes.io/name: alien-geeko
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: alien-geeko-reader
+subjects:
+  - kind: ServiceAccount
+    name: alien-geeko
+    namespace: alien-geeko

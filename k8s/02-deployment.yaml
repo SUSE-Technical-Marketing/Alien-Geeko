@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alien-geeko
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+    #app.kubernetes.io/version: "1.0.1"
+    app.kubernetes.io/part-of: suse-edge-demo
+  annotations:
+    fleet.cattle.io/bundle-id: alien-geeko
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alien-geeko
+  template:
+    metadata:
+      labels:
+        app: alien-geeko
+        app.kubernetes.io/name: alien-geeko
+    spec:
+      serviceAccountName: alien-geeko
+
+      # Explicitly enable service account token mounting.
+      # k3s and RKE2 both mount projected (bound) tokens at the standard path:
+      #   /var/run/secrets/kubernetes.io/serviceaccount/token
+      # server.js reads this on every API call to handle hourly token rotation.
+      automountServiceAccountToken: true
+
+      containers:
+        - name: alien-geeko
+          image: docker.io/avaleror/alien-geeko:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+
+          # Downward API — pod and node metadata injected as env vars.
+          # These are always available without any API call.
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            # Display name for this cluster — override per cluster via Fleet overlay
+            - name: CLUSTER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: alien-geeko-config
+                  key: CLUSTER_NAME
+                  optional: true
+            - name: PORT
+              value: "3000"
+
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000   # matches geeko uid in Dockerfile (explicit --uid 1000)
+            runAsGroup: 1000  # matches geeko gid in Dockerfile (explicit --gid 1000)
+            seccompProfile:
+              # RuntimeDefault is supported by both k3s and RKE2 (containerd)
+              # and satisfies the "restricted" PSA profile
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+
+      # Spread across architectures — works on both k3s and RKE2 mixed clusters
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/arch
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: alien-geeko
+
+      # Tolerate control-plane taints — needed on single-node k3s where the
+      # only node has the control-plane taint (common in Rancher Desktop)
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        # RKE2 etcd-only nodes
+        - key: "node-role.kubernetes.io/etcd"
+          operator: "Exists"
+          effect: "NoExecute"

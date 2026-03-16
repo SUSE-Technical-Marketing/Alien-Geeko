@@ -1,0 +1,29 @@
+---
+# Per-cluster configuration — override via Fleet overlays
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alien-geeko-config
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+data:
+  # Override this per cluster in your Fleet overlay
+  # e.g. "PI-CLUSTER-01", "X86-FACTORY-EDGE", "ARM-RETAIL-SITE-042"
+  CLUSTER_NAME: "EDGE-CLUSTER"
+
+---
+# Cluster info configmap — populated by the init container
+# Initially empty; updated by init container on each pod start
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alien-geeko-cluster-info
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+data:
+  K8S_VERSION: "detecting..."
+  NODE_COUNT: "?"
+  NODE_ARCH: "amd64"
+  OS_RELEASE: "SUSE Linux Micro"

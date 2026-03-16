@@ -1,0 +1,46 @@
+---
+# Service — ClusterIP for internal access, NodePort for edge nodes
+apiVersion: v1
+kind: Service
+metadata:
+  name: alien-geeko
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+  annotations:
+    # MetalLB annotation — uncomment if you want a LoadBalancer IP on bare metal
+    # metallb.universe.tf/address-pool: default
+spec:
+  selector:
+    app: alien-geeko
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      # NodePort in the 30000-32767 range — accessible from any node IP
+      # Remove nodePort to let K8s auto-assign, or set a fixed port:
+      nodePort: 30080
+      protocol: TCP
+
+---
+# Optional: LoadBalancer service for clusters with MetalLB
+# Uncomment and comment out the NodePort service above to use
+#
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: alien-geeko-lb
+#   namespace: alien-geeko
+#   labels:
+#     app.kubernetes.io/name: alien-geeko
+#   annotations:
+#     metallb.universe.tf/address-pool: default
+# spec:
+#   selector:
+#     app: alien-geeko
+#   type: LoadBalancer
+#   ports:
+#     - name: http
+#       port: 80
+#       targetPort: 3000

@@ -1,0 +1,10 @@
+alien-geeko
+Copyright 2025 SUSE LLC
+
+This product includes software developed at SUSE LLC (https://www.suse.com).
+
+Built on SUSE BCI (Base Container Images) — registry.suse.com/bci/nodejs:20
+SUSE BCI is provided under its own license terms. See https://opensource.suse.com/bci
+
+This software is intended for use with k3s or RKE2 clusters and is part of the
+SUSE demos.

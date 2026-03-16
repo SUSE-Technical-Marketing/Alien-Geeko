@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+    app.kubernetes.io/part-of: suse-edge-demo
+    # Pod Security Admission labels — required for RKE2 which enforces PSA
+    # by default. "baseline" allows our non-root, no-privilege container.
+    # "restricted" would also work given our securityContext, but some
+    # service mesh sidecars injected by Rancher need baseline.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest

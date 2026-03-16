@@ -1,0 +1,70 @@
+# Copyright 2025 SUSE LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# fleet.yaml — Fleet GitOps bundle definition
+# Place this at the root of your git repo alongside the k8s/ directory
+#
+# This tells Fleet:
+#   - Which namespace to deploy into
+#   - How to target different clusters
+#   - Which per-cluster overlays to apply (for CLUSTER_NAME customization)
+#
+# Documentation: https://fleet.rancher.io/ref-fleet-yaml
+
+namespace: alien-geeko
+
+# ── Default values applied to ALL target clusters ──────────────────────────
+# ── Cluster targeting ───────────────────────────────────────────────────────
+# Fleet uses cluster labels set in Rancher to target which clusters
+# get this bundle. Label your clusters in Rancher UI or via API:
+#
+#   edge-type: pi-cluster     → Raspberry Pi ARM clusters
+#   edge-type: x86-cluster    → x86 NUC / spare nodes
+#   demo: "true"              → all demo clusters
+#
+targets:
+  # Deploy to ALL clusters in the fleet that have label demo=true
+  - name: all-demo-clusters
+    clusterSelector:
+      matchLabels:
+        demo: "true"
+
+  # ── ARM Pi cluster overlay ─────────────────────────────────────────────
+  # Overrides CLUSTER_NAME for Pi clusters
+  - name: pi-arm-cluster
+    clusterSelector:
+      matchLabels:
+        edge-type: pi-cluster
+        kubernetes.io/arch: arm64
+    helm:
+      values:
+        clusterName: "PI-CLUSTER-ARM64"
+    # Kustomize overlay path for Pi clusters
+    kustomize:
+      dir: overlays/pi-cluster
+
+  # ── x86 cluster overlay ────────────────────────────────────────────────
+  - name: x86-cluster
+    clusterSelector:
+      matchLabels:
+        edge-type: x86-cluster
+    helm:
+      values:
+        clusterName: "X86-EDGE-NODE"
+    kustomize:
+      dir: overlays/x86-cluster
+
+  # ── Fallback: deploy everywhere ────────────────────────────────────────
+  - name: default
+    clusterSelector: {}
