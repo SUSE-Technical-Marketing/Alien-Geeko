@@ -113,6 +113,110 @@ docker run --rm -p 3000:3000 alien-geeko:1.0.1
 > **Note:** Before deploying, update the `image:` field in
 > `k8s/02-deployment.yaml` to point to your registry.
 
+## Building the Image
+
+The app is distributed as a multi-arch container image built on
+**SUSE BCI Node.js 20** (`registry.suse.com/bci/nodejs:20`), which publishes
+native layers for both `linux/amd64` and `linux/arm64`. This means the same
+image tag runs natively on your x86 NUC and your Raspberry Pi 5 without
+emulation or any changes to the manifests.
+
+The recommended approach for a KubeCon demo is to build each architecture
+separately — one on a native x86 machine, one on a native Pi 5 — and then
+combine them into a single multi-arch manifest. This avoids QEMU emulation,
+which is slow and occasionally produces binaries that behave differently from
+a native build.
+
+---
+
+### Step 1 — Build the x86 image (run on an amd64 machine)
+```bash
+docker build \
+  --platform linux/amd64 \
+  -t YOUR_REGISTRY/alien-geeko:1.0.1-amd64 \
+  --push \
+  .
+```
+
+This builds and immediately pushes the amd64 layer to your registry. The
+`--push` flag is required here because `docker manifest create` (Step 3)
+needs both images to already exist in the registry before it can reference them.
+
+---
+
+### Step 2 — Build the ARM image (run on an arm machine)
+```bash
+docker build \
+  --platform linux/arm64 \
+  -t YOUR_REGISTRY/alien-geeko:1.0.1-arm64 \
+  --push .
+```
+
+Run this command directly on a Mac M or in a Raspberry Pi. If you do not have direct shell access
+to the Pi, you can use a Docker remote context to build on it from your
+laptop — see the note below.
+
+---
+
+### Step 3 — Combine both layers into a single multi-arch manifest
+
+Once both architecture-specific images are in the registry, create a combined
+manifest that points to both. When Kubernetes pulls `alien-geeko:1.0.1` it
+will automatically receive the correct layer for the node's architecture —
+the x86 NUC gets the amd64 layer, the Pi 5 gets the arm64 layer, from the
+exact same image reference in your deployment manifest.
+
+```bash
+docker manifest create YOUR_REGISTRY/alien-geeko:1.0.1 \
+  YOUR_REGISTRY/alien-geeko:1.0.1-amd64 \
+  YOUR_REGISTRY/alien-geeko:1.0.1-arm64
+
+docker manifest push YOUR_REGISTRY/alien-geeko:1.0.1
+```
+
+---
+
+### Step 4 — Also tag as `latest`
+
+Tag the same combined manifest as `latest` so Fleet and any tooling that
+does not pin a specific version always pulls the most recent build:
+```bash
+docker manifest create YOUR_REGISTRY/alien-geeko:latest \
+  YOUR_REGISTRY/alien-geeko:1.0.1-amd64 \
+  YOUR_REGISTRY/alien-geeko:1.0.1-arm64
+
+docker manifest push YOUR_REGISTRY/alien-geeko:latest
+```
+
+---
+
+### Using a remote Docker context
+
+If you prefer to trigger both builds from your laptop without SSH-ing into
+the Pi, add the Pi as a remote Docker context:
+
+```bash
+# Add the Pi as a named Docker context (run once on your laptop)
+docker context create pi \
+  --docker "host=ssh://pi@<PI_IP_ADDRESS>"
+
+# Verify the connection
+docker context ls
+
+# Build the ARM image using the Pi context
+docker --context pi build \
+  --platform linux/arm64 \
+  -t YOUR_REGISTRY/alien-geeko:1.0.1-arm64 \
+  --push \
+  .
+
+# Switch back to your local context for the manifest step
+docker context use default
+```
+
+This keeps your workflow entirely on your laptop while still producing a
+native ARM binary with no emulation involved.
+
 ---
 
 ## Deploying Manually (single cluster)
@@ -183,10 +287,10 @@ In **Rancher UI → Cluster Management** select each cluster, go to
 # All demo clusters (required by fleet.yaml default target)
 demo: "true"
 
-# ARM Raspberry Pi 5 clusters
+# ARM clusters
 edge-type: pi-cluster
 
-# x86 NUC clusters
+# x86 clusters
 edge-type: x86-cluster
 ```
 
