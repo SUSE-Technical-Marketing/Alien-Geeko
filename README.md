@@ -1,7 +1,7 @@
 # 🦎 GEEKO // ALIEN TERMINAL
 
 <p align="center">
-  <img src="app/geeko-trimmed.png" alt="Geeko" width="300"/>
+  <img src="resources/alien-geeko-nostromo.jpg" alt="Geeko" width="300"/>
 </p>
 
 > A Nostromo-style CRT terminal web app that displays live Kubernetes cluster vitals,
