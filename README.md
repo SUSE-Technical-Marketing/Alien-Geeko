@@ -357,10 +357,10 @@ fleet.yaml
 ├── target: pi-arm-cluster            → labels: edge-type=pi-cluster
 │   kustomize: overlays/pi-cluster       patches CLUSTER_NAME for Pi nodes
 │
-├── target: x86-cluster               → labels: edge-type=x86-cluster
-│   kustomize: overlays/x86-cluster      patches CLUSTER_NAME for x86 nodes
 │
-└── target: default                   → fallback, matches everything else
+└── target: x86-cluster               → labels: edge-type=x86-cluster
+    kustomize: overlays/x86-cluster      patches CLUSTER_NAME for x86 nodes
+
 ```
 
 ---

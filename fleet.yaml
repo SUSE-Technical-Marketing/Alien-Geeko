@@ -65,6 +65,3 @@ targets:
     kustomize:
       dir: overlays/x86-cluster
 
-  # ── Fallback: deploy everywhere ────────────────────────────────────────
-  #- name: default
-  #  clusterSelector: {}
