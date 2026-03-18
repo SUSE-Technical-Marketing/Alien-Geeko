@@ -9,6 +9,7 @@
 > Designed for the SUSE Edge KubeCon booth demo — runs on k3s and RKE2,
 > deploys via Fleet across mixed x86 and ARM clusters.
 
+**-Read the disclaimer at the bottom of the README document before using the app.**
 ---
 
 ## What It Does
@@ -572,5 +573,99 @@ kubectl -n fleet-default describe bundle alien-geeko
 ```
 
 ---
+# Disclaimer
+
+**alien-geeko** is an independent, community-created demonstration application.
+It is not a SUSE product, is not affiliated with SUSE LLC, and is not
+endorsed, supported, or maintained by SUSE in any capacity. The SUSE name,
+the SUSE chameleon logo, and related trademarks are the property of SUSE LLC
+and are referenced solely to identify the platform context for which this
+demonstration was created.
+
+---
+
+## Purpose and Scope
+
+This application was created exclusively for demonstration and educational
+purposes in the context of technical events and proof-of-concept environments.
+It is designed to illustrate Kubernetes edge deployment patterns using
+SUSE Edge, k3s, Rancher, and Fleet. It is not intended for use in production
+environments, critical infrastructure, or any system where reliability,
+security, or data integrity are required.
+
+---
+
+## No Warranty
+
+This software is provided **"as is"**, without warranty of any kind, express
+or implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose, and non-infringement. The authors make no
+representations or warranties regarding the accuracy, completeness,
+reliability, or suitability of this software for any purpose.
+
+---
+
+## Limitation of Liability
+
+In no event shall the authors, contributors, or any affiliated individuals be
+liable for any direct, indirect, incidental, special, exemplary, or
+consequential damages (including but not limited to procurement of substitute
+goods or services; loss of use, data, or profits; or business interruption)
+however caused and on any theory of liability, whether in contract, strict
+liability, or tort (including negligence or otherwise) arising in any way out
+of the use of this software, even if advised of the possibility of such damage.
+
+---
+
+## Security
+
+This application is a demonstration tool. It has not undergone a formal
+security audit and should not be exposed to untrusted networks or the public
+internet. It is intended to run inside isolated lab or event environments only.
+The authors accept no responsibility for any security incidents arising from
+the deployment of this software outside of its intended demonstration context.
+
+---
+
+## Kubernetes API Access
+
+alien-geeko queries the Kubernetes API using a read-only service account with
+minimal RBAC permissions (node list and `/version` endpoint only). No data is
+written to the cluster, no secrets are accessed, and no cluster state is
+modified. Users are responsible for reviewing the included RBAC manifests
+before deploying to any environment.
+
+---
+
+## Third-Party Components
+
+This application is built on open source components including Node.js and
+SUSE BCI (Base Container Images). Each component is subject to its own
+license terms. The use of SUSE BCI is governed by the SUSE BCI terms
+available at [https://opensource.suse.com/bci](https://opensource.suse.com/bci).
+The authors make no warranties regarding third-party components.
+
+---
+
+## License
+
+alien-geeko is licensed under the Apache License, Version 2.0. You are free
+to use, copy, modify, and distribute this software in accordance with the
+terms of that license. A full copy of the license is included in the
+repository as `LICENSE`.
+
+---
+
+## Contact
+
+This project is maintained on a best-effort, volunteer basis. There is no
+guaranteed response time for issues or pull requests. For questions or
+contributions, please open an issue on the project repository.
+
+---
+
+*This disclaimer is provided for informational purposes only and does not
+constitute legal advice. If you have specific legal concerns regarding the
+use of this software, please consult a qualified legal professional.*
 
 *GEEKO // ALIEN — In space, no one can hear you provision.*
