@@ -54,5 +54,5 @@ targets:
       dir: overlays/x86-cluster
 
   # Fallback — any cluster with demo=true that doesn't match above
-  - name: default
-    clusterSelector: {}
+#  - name: default
+#    clusterSelector: {}
