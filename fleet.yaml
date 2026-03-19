@@ -30,29 +30,34 @@
 defaultNamespace: alien-geeko
 
 targets:
-  # Deploy to ALL clusters labelled demo=true
-  - name: all-demo-clusters
-    clusterSelector:
-      matchLabels:
-        demo: "true"
-
-  # ARM Pi cluster — applies CLUSTER_NAME overlay
+  # ARM Pi cluster — overlay sets CLUSTER_NAME for Pi nodes.
+  # demo=true is required on ALL targets — a cluster without this label
+  # will not match any target and receives nothing.
   - name: pi-arm-cluster
     clusterSelector:
       matchLabels:
+        demo: "true"
         edge-type: pi-cluster
         kubernetes.io/arch: arm64
     kustomize:
       dir: overlays/pi-cluster
 
-  # x86 cluster — applies CLUSTER_NAME overlay
+  # x86 cluster — overlay sets CLUSTER_NAME for x86 nodes
   - name: x86-cluster
     clusterSelector:
       matchLabels:
+        demo: "true"
         edge-type: x86-cluster
     kustomize:
       dir: overlays/x86-cluster
 
-  # Fallback — any cluster with demo=true that doesn't match above
-#  - name: default
-#    clusterSelector: {}
+  # Generic demo cluster — no overlay, uses default CLUSTER_NAME from ConfigMap.
+  # Matches any cluster with demo=true that did not match the specific targets above.
+  - name: all-demo-clusters
+    clusterSelector:
+      matchLabels:
+        demo: "true"
+
+  # ── NO FALLBACK ────────────────────────────────────────────────────────────
+  # There is intentionally no target with clusterSelector: {} here.
+  # Any cluster without demo=true matches nothing and gets nothing.
