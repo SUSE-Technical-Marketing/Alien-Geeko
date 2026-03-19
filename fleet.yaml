@@ -22,7 +22,11 @@
 #
 # Documentation: https://fleet.rancher.io/ref-fleet-yaml
 
-namespace: alien-geeko
+# defaultNamespace tells Fleet where to deploy namespaced resources that
+# don't already specify a namespace. Unlike 'namespace', it does NOT
+# enforce namespace restriction, so cluster-scoped resources like the
+# Namespace object in 00-namespace.yaml are allowed through.
+defaultNamespace: alien-geeko
 
 # ── Default values applied to ALL target clusters ──────────────────────────
 # ── Cluster targeting ───────────────────────────────────────────────────────
@@ -65,3 +69,6 @@ targets:
     kustomize:
       dir: overlays/x86-cluster
 
+  # ── Fallback: deploy everywhere ────────────────────────────────────────
+  - name: default
+    clusterSelector: {}
