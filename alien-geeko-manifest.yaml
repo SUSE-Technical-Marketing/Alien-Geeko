@@ -1,0 +1,291 @@
+# Copyright 2025 SUSE LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# alien-geeko — single-file manifest
+#
+# Apply this ONCE manually on each cluster BEFORE adding the cluster to Fleet:
+#
+#   kubectl apply -f alien-geeko-manifest.yaml
+#
+# This creates the Namespace with all required labels (including Helm ownership
+# metadata) so Fleet never tries to create or reconcile it — preventing the
+# "namespace already exists" and "invalid ownership metadata" errors.
+#
+# After this, Fleet manages everything else (RBAC, Deployment, ConfigMap,
+# Service) through the GitOps bundle.
+# ─────────────────────────────────────────────────────────────────────────────
+
+---
+# ── Namespace ─────────────────────────────────────────────────────────────────
+# Pre-created outside Fleet to avoid Helm ownership conflicts.
+# Helm ownership labels are set here so Fleet's Helm engine recognises this
+# namespace as already belonging to the alien-geeko release and does not
+# attempt to re-create or import it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+    app.kubernetes.io/part-of: suse-edge-demo
+    # Helm ownership — required to prevent "invalid ownership metadata" errors
+    # when Fleet deploys the bundle via its internal Helm engine
+    app.kubernetes.io/managed-by: Helm
+    # Pod Security Admission — required for RKE2 which enforces PSA by default.
+    # "baseline" allows our non-root, no-privilege container.
+    # "warn: restricted" surfaces warnings if a sidecar needs relaxing.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: latest
+  annotations:
+    # Helm ownership — must match the Fleet bundle name and namespace
+    meta.helm.sh/release-name: alien-geeko
+    meta.helm.sh/release-namespace: alien-geeko
+
+---
+# ── ServiceAccount ────────────────────────────────────────────────────────────
+# automountServiceAccountToken left at default (true) — k3s and RKE2 mount
+# projected (bound) tokens rotated ~hourly. server.js re-reads on every call.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alien-geeko
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+
+---
+# ── ClusterRole ───────────────────────────────────────────────────────────────
+# Minimal read-only access: node list/get + /version non-resource URL.
+# /version is unauthenticated on k3s/RKE2 but declared for forward compat.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alien-geeko-reader
+  labels:
+    app.kubernetes.io/name: alien-geeko
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - nonResourceURLs: ["/version"]
+    verbs: ["get"]
+
+---
+# ── ClusterRoleBinding ────────────────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alien-geeko-reader
+  labels:
+    app.kubernetes.io/name: alien-geeko
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: alien-geeko-reader
+subjects:
+  - kind: ServiceAccount
+    name: alien-geeko
+    namespace: alien-geeko
+
+---
+# ── ConfigMap ─────────────────────────────────────────────────────────────────
+# CLUSTER_NAME is the display name shown in the alien-geeko terminal UI.
+# Override this per cluster via Fleet kustomize overlay.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alien-geeko-config
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+data:
+  CLUSTER_NAME: "EDGE-CLUSTER"
+
+---
+# ── Deployment ────────────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alien-geeko
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+    app.kubernetes.io/version: "1.0.1"
+    app.kubernetes.io/part-of: suse-edge-demo
+  annotations:
+    fleet.cattle.io/bundle-id: alien-geeko
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alien-geeko
+  template:
+    metadata:
+      labels:
+        app: alien-geeko
+        app.kubernetes.io/name: alien-geeko
+    spec:
+      serviceAccountName: alien-geeko
+      # Explicitly enable service account token mounting.
+      # k3s and RKE2 use projected (bound) tokens rotated ~hourly.
+      # server.js re-reads the token from disk on every K8s API call.
+      automountServiceAccountToken: true
+
+      containers:
+        - name: alien-geeko
+          image: ghcr.io/suse-edge/alien-geeko:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+
+          # Downward API — pod and node metadata, always available without API calls
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            # Display name — overridden per cluster via Fleet kustomize overlay
+            - name: CLUSTER_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: alien-geeko-config
+                  key: CLUSTER_NAME
+                  optional: true
+            - name: PORT
+              value: "3000"
+
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "32Mi"
+            limits:
+              cpu: "100m"
+              memory: "64Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000    # matches geeko uid in Dockerfile (explicit --uid 1000)
+            runAsGroup: 1000   # matches geeko gid in Dockerfile (explicit --gid 1000)
+            seccompProfile:
+              type: RuntimeDefault  # supported by k3s and RKE2 (containerd)
+            capabilities:
+              drop:
+                - ALL
+
+      # Spread across architectures on mixed x86/ARM clusters
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/arch
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: alien-geeko
+
+      # Tolerate control-plane taints — required on single-node k3s
+      # (e.g. Rancher Desktop) where the only node carries this taint
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/etcd"
+          operator: "Exists"
+          effect: "NoExecute"
+
+---
+# ── Service ───────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Service
+metadata:
+  name: alien-geeko
+  namespace: alien-geeko
+  labels:
+    app.kubernetes.io/name: alien-geeko
+  annotations:
+    # Uncomment to request a MetalLB address on bare-metal clusters
+    # metallb.universe.tf/address-pool: default
+spec:
+  selector:
+    app: alien-geeko
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      nodePort: 30080
+      protocol: TCP
+
+# ── LoadBalancer alternative ──────────────────────────────────────────────────
+# Uncomment and remove the NodePort service above when running on a cluster
+# with MetalLB (e.g. EIB-provisioned Pi cluster via SUSE Edge 3.5)
+#
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: alien-geeko-lb
+#   namespace: alien-geeko
+#   annotations:
+#     metallb.universe.tf/address-pool: default
+# spec:
+#   selector:
+#     app: alien-geeko
+#   type: LoadBalancer
+#   ports:
+#     - name: http
+#       port: 80
+#       targetPort: 3000

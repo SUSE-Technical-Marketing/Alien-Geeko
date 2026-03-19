@@ -1,3 +1,7 @@
+# Pre-created outside Fleet to avoid Helm ownership conflicts.
+# Helm ownership labels are set here so Fleet's Helm engine recognises this
+# namespace as already belonging to the alien-geeko release and does not
+# attempt to re-create or import it.
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -5,11 +9,17 @@ metadata:
   labels:
     app.kubernetes.io/name: alien-geeko
     app.kubernetes.io/part-of: suse-edge-demo
-    # Pod Security Admission labels — required for RKE2 which enforces PSA
-    # by default. "baseline" allows our non-root, no-privilege container.
-    # "restricted" would also work given our securityContext, but some
-    # service mesh sidecars injected by Rancher need baseline.
+    # Helm ownership — required to prevent "invalid ownership metadata" errors
+    # when Fleet deploys the bundle via its internal Helm engine
+    app.kubernetes.io/managed-by: Helm
+    # Pod Security Admission — required for RKE2 which enforces PSA by default.
+    # "baseline" allows our non-root, no-privilege container.
+    # "warn: restricted" surfaces warnings if a sidecar needs relaxing.
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/enforce-version: latest
     pod-security.kubernetes.io/warn: restricted
     pod-security.kubernetes.io/warn-version: latest
+  annotations:
+    # Helm ownership — must match the Fleet bundle name and namespace
+    meta.helm.sh/release-name: alien-geeko
+    meta.helm.sh/release-namespace: alien-geeko
