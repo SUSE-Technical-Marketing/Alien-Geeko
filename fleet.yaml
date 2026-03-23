@@ -15,15 +15,22 @@
 # fleet.yaml — Fleet GitOps bundle definition
 # Documentation: https://fleet.rancher.io/ref-fleet-yaml
 
+# defaultNamespace — fallback for any resource without an explicit namespace.
+# Does NOT enforce namespace restriction, so cluster-scoped resources
+# (ClusterRole, ClusterRoleBinding) are allowed through unmodified.
 defaultNamespace: alien-geeko
 
 helm:
-  # takeOwnership allows Fleet's Helm engine to adopt the alien-geeko namespace
-  # even if it was pre-created (e.g., by a previous install attempt).
-  # This prevents "invalid ownership metadata" errors on re-deploy.
+  # takeOwnership allows Fleet's internal Helm engine to adopt the
+  # alien-geeko namespace even if it was pre-created or left over from a
+  # previous install attempt. This prevents "invalid ownership metadata"
+  # errors without requiring any manual kubectl pre-steps.
   takeOwnership: true
 
 targets:
+  # ARM Pi cluster — overlay sets CLUSTER_NAME for Pi nodes.
+  # demo=true is required on ALL targets — a cluster without this label
+  # will not match any target and receives nothing.
   - name: pi-arm-cluster
     clusterSelector:
       matchLabels:
@@ -33,6 +40,7 @@ targets:
     kustomize:
       dir: overlays/pi-cluster
 
+  # x86 cluster — overlay sets CLUSTER_NAME for x86 nodes.
   - name: x86-cluster
     clusterSelector:
       matchLabels:
@@ -41,7 +49,15 @@ targets:
     kustomize:
       dir: overlays/x86-cluster
 
+  # Generic demo cluster — no overlay, uses base manifests directly.
+  # Matches any cluster with demo=true that did not match above targets.
   - name: all-demo-clusters
     clusterSelector:
       matchLabels:
         demo: "true"
+    kustomize:
+      dir: overlays/default
+
+  # ── NO FALLBACK ────────────────────────────────────────────────────────────
+  # There is intentionally no target with clusterSelector: {} here.
+  # Any cluster without demo=true matches nothing and gets nothing.

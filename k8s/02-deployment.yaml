@@ -1,3 +1,20 @@
+# Copyright 2025 SUSE LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# 02-deployment.yaml — Deployment for the alien-geeko application
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,10 +22,7 @@ metadata:
   namespace: alien-geeko
   labels:
     app.kubernetes.io/name: alien-geeko
-    #app.kubernetes.io/version: "1.0.1"
     app.kubernetes.io/part-of: suse-edge-demo
-  annotations:
-    fleet.cattle.io/bundle-id: alien-geeko
 spec:
   replicas: 1
   selector:
@@ -60,7 +74,7 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-            # Display name for this cluster — override per cluster via Fleet overlay
+            # Display name for this cluster — overridden per cluster via Fleet overlay.
             - name: CLUSTER_NAME
               valueFrom:
                 configMapKeyRef:
@@ -104,13 +118,13 @@ spec:
             runAsGroup: 1000  # matches geeko gid in Dockerfile (explicit --gid 1000)
             seccompProfile:
               # RuntimeDefault is supported by both k3s and RKE2 (containerd)
-              # and satisfies the "restricted" PSA profile
+              # and satisfies the "restricted" PSA profile.
               type: RuntimeDefault
             capabilities:
               drop:
                 - ALL
 
-      # Spread across architectures — works on both k3s and RKE2 mixed clusters
+      # Spread across architectures — works on both k3s and RKE2 mixed clusters.
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/arch
@@ -120,7 +134,7 @@ spec:
               app: alien-geeko
 
       # Tolerate control-plane taints — needed on single-node k3s where the
-      # only node has the control-plane taint (common in Rancher Desktop)
+      # only node has the control-plane taint (common in Rancher Desktop).
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
@@ -128,7 +142,7 @@ spec:
         - key: "node-role.kubernetes.io/master"
           operator: "Exists"
           effect: "NoSchedule"
-        # RKE2 etcd-only nodes
+        # RKE2 etcd-only nodes.
         - key: "node-role.kubernetes.io/etcd"
           operator: "Exists"
           effect: "NoExecute"

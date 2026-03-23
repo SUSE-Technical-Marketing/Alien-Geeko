@@ -1,0 +1,37 @@
+# Copyright 2025 SUSE LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# overlays/pi-cluster/kustomization.yaml
+# Target: ARM64 Raspberry Pi clusters (edge-type=pi-cluster, arch=arm64)
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../k8s/00-namespace.yaml
+  - ../../k8s/01-rbac.yaml
+  - ../../k8s/02-deployment.yaml
+  - ../../k8s/03-configmap.yaml
+  - ../../k8s/04-service.yaml
+
+patches:
+  # Override the cluster display name for Pi nodes.
+  - patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: alien-geeko-config
+        namespace: alien-geeko
+      data:
+        CLUSTER_NAME: "PI-CLUSTER-ARM64"

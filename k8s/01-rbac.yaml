@@ -1,5 +1,20 @@
+# Copyright 2025 SUSE LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# 01-rbac.yaml — ServiceAccount, ClusterRole, and ClusterRoleBinding
+
 ---
-# ServiceAccount
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -7,13 +22,14 @@ metadata:
   namespace: alien-geeko
   labels:
     app.kubernetes.io/name: alien-geeko
+    app.kubernetes.io/part-of: suse-edge-demo
 # automountServiceAccountToken is left at its default (true) so the kubelet
 # mounts the projected token at the standard path. Both k3s and RKE2 use
 # projected (bound) tokens — they are rotated ~hourly by the kubelet.
 # server.js re-reads the token from disk on every API call to handle rotation.
 
 ---
-# ClusterRole — minimal read-only permissions
+# ClusterRole — minimal read-only permissions.
 # /version is technically unauthenticated on k3s/RKE2 but we declare it
 # explicitly for forward compatibility and documentation clarity.
 apiVersion: rbac.authorization.k8s.io/v1
@@ -22,23 +38,24 @@ metadata:
   name: alien-geeko-reader
   labels:
     app.kubernetes.io/name: alien-geeko
+    app.kubernetes.io/part-of: suse-edge-demo
 rules:
-  # Node list + get — for node count, arch, OS image, kubelet version, role labels
+  # Node list + get — for node count, arch, OS image, kubelet version, role labels.
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "list"]
-  # /version — K8s server version (also used for k3s/RKE2 distribution detection)
+  # /version — K8s server version (also used for k3s/RKE2 distribution detection).
   - nonResourceURLs: ["/version"]
     verbs: ["get"]
 
 ---
-# ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: alien-geeko-reader
   labels:
     app.kubernetes.io/name: alien-geeko
+    app.kubernetes.io/part-of: suse-edge-demo
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
