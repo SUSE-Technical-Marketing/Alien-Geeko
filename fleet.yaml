@@ -13,26 +13,17 @@
 # limitations under the License.
 
 # fleet.yaml — Fleet GitOps bundle definition
-#
-# IMPORTANT: Before adding any cluster to this bundle, run on that cluster:
-#
-#   kubectl apply -f alien-geeko-manifest.yaml
-#
-# This pre-creates the Namespace with the correct Helm ownership labels so
-# Fleet's internal Helm engine does not attempt to create or import it,
-# avoiding "namespace already exists" and "invalid ownership metadata" errors.
-#
 # Documentation: https://fleet.rancher.io/ref-fleet-yaml
 
-# defaultNamespace — fallback for any resource without an explicit namespace.
-# Does NOT enforce namespace restriction, so cluster-scoped resources
-# (ClusterRole, ClusterRoleBinding) are allowed through unmodified.
 defaultNamespace: alien-geeko
 
+helm:
+  # takeOwnership allows Fleet's Helm engine to adopt the alien-geeko namespace
+  # even if it was pre-created (e.g., by a previous install attempt).
+  # This prevents "invalid ownership metadata" errors on re-deploy.
+  takeOwnership: true
+
 targets:
-  # ARM Pi cluster — overlay sets CLUSTER_NAME for Pi nodes.
-  # demo=true is required on ALL targets — a cluster without this label
-  # will not match any target and receives nothing.
   - name: pi-arm-cluster
     clusterSelector:
       matchLabels:
@@ -42,7 +33,6 @@ targets:
     kustomize:
       dir: overlays/pi-cluster
 
-  # x86 cluster — overlay sets CLUSTER_NAME for x86 nodes
   - name: x86-cluster
     clusterSelector:
       matchLabels:
@@ -51,13 +41,7 @@ targets:
     kustomize:
       dir: overlays/x86-cluster
 
-  # Generic demo cluster — no overlay, uses default CLUSTER_NAME from ConfigMap.
-  # Matches any cluster with demo=true that did not match the specific targets above.
   - name: all-demo-clusters
     clusterSelector:
       matchLabels:
         demo: "true"
-
-  # ── NO FALLBACK ────────────────────────────────────────────────────────────
-  # There is intentionally no target with clusterSelector: {} here.
-  # Any cluster without demo=true matches nothing and gets nothing.
